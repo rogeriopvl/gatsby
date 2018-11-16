@@ -4,6 +4,7 @@ const fs = require(`fs-extra`)
 const path = require(`path`)
 const dotenv = require(`dotenv`)
 const FriendlyErrorsWebpackPlugin = require(`friendly-errors-webpack-plugin`)
+const PnpWebpackPlugin = require(`pnp-webpack-plugin`)
 const { store } = require(`../redux`)
 const { actions } = require(`../redux/actions`)
 const debug = require(`debug`)(`gatsby:webpack-config`)
@@ -350,6 +351,10 @@ module.exports = async (
   function getResolve() {
     const { program } = store.getState()
     return {
+      plugins: [
+        // Adds support for yarn plug'n'play
+        PnpWebpackPlugin,
+      ],
       // Use the program's extension list (generated via the
       // 'resolvableExtensions' API hook).
       extensions: [...program.extensions],
@@ -392,6 +397,10 @@ module.exports = async (
     }
 
     return {
+      plugins: [
+        // Plug'n'Play: Tell webpack to load from the current package
+        PnpWebpackPlugin.moduleLoader(module),
+      ],
       modules: [...root, path.join(__dirname, `../loaders`), `node_modules`],
     }
   }

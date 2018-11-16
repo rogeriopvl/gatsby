@@ -28,15 +28,23 @@ const shouldUseYarn = () => {
 }
 
 // Executes `npm install` or `yarn install` in rootPath.
-const install = async rootPath => {
+const install = async (rootPath, usePnp) => {
   const prevDir = process.cwd()
 
   report.info(`Installing packages...`)
   process.chdir(rootPath)
 
+  let cmd
+
+  if (shouldUseYarn()) {
+    cmd = `yarnpkg${usePnp ? ` --pnp` : ``}`
+  } else {
+    usePnp && report.warn(`NPM does not support PnP, ignoring --use-pnp...`)
+    cmd = `npm install`
+  }
+
   try {
-    let cmd = shouldUseYarn() ? spawn(`yarnpkg`) : spawn(`npm install`)
-    await cmd
+    await spawn(cmd)
   } finally {
     process.chdir(prevDir)
   }
@@ -45,7 +53,7 @@ const install = async rootPath => {
 const ignored = path => !/^\.(git|hg)$/.test(sysPath.basename(path))
 
 // Copy starter from file system.
-const copy = async (starterPath: string, rootPath: string) => {
+const copy = async (starterPath: string, rootPath: string, usePnp: boolean) => {
   // Chmod with 755.
   // 493 = parseInt('755', 8)
   await fs.mkdirp(rootPath, { mode: 493 })
@@ -71,13 +79,13 @@ const copy = async (starterPath: string, rootPath: string) => {
 
   report.success(`Created starter directory layout`)
 
-  await install(rootPath)
+  await install(rootPath, usePnp)
 
   return true
 }
 
 // Clones starter from URI.
-const clone = async (hostInfo: any, rootPath: string) => {
+const clone = async (hostInfo: any, rootPath: string, usePnp: boolean) => {
   let url
   // Let people use private repos accessed over SSH.
   if (hostInfo.getDefaultRepresentation() === `sshurl`) {
@@ -97,18 +105,19 @@ const clone = async (hostInfo: any, rootPath: string) => {
 
   await fs.remove(sysPath.join(rootPath, `.git`))
 
-  await install(rootPath)
+  await install(rootPath, usePnp)
 }
 
 type InitOptions = {
   rootPath?: string,
+  usePnp?: boolean,
 }
 
 /**
  * Main function that clones or copies the starter.
  */
 module.exports = async (starter: string, options: InitOptions = {}) => {
-  const rootPath = options.rootPath || process.cwd()
+  const { rootPath = process.cwd(), usePnp } = options
 
   const urlObject = url.parse(rootPath)
   if (urlObject.protocol && urlObject.host) {
@@ -124,6 +133,6 @@ module.exports = async (starter: string, options: InitOptions = {}) => {
   }
 
   const hostedInfo = hostedGitInfo.fromUrl(starter)
-  if (hostedInfo) await clone(hostedInfo, rootPath)
-  else await copy(starter, rootPath)
+  if (hostedInfo) await clone(hostedInfo, rootPath, usePnp)
+  else await copy(starter, rootPath, usePnp)
 }
