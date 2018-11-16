@@ -34,12 +34,17 @@ const install = async (rootPath, usePnp) => {
   report.info(`Installing packages...`)
   process.chdir(rootPath)
 
+  let cmd
+
+  if (shouldUseYarn()) {
+    cmd = `yarnpkg${usePnp ? ` --pnp` : ``}`
+  } else {
+    usePnp && report.warn(`NPM does not support PnP, ignoring --use-pnp...`)
+    cmd = `npm install`
+  }
+
   try {
-    // TODO: If yarn version under 1.2 or NPM is being used, warn user.
-    let cmd = shouldUseYarn()
-      ? spawn(`yarnpkg${usePnp ? ` --pnp` : ``}`)
-      : spawn(`npm install`)
-    await cmd
+    await spawn(cmd)
   } finally {
     process.chdir(prevDir)
   }
